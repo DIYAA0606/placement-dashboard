@@ -17,7 +17,7 @@
       <span class="logo-text">PlacePrep</span>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" role="navigation">
       <a href="#" class="nav-item active" data-section="dashboard">
         <span class="nav-icon">⬡</span>
         <span>Dashboard</span>
@@ -64,7 +64,7 @@
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-content">
+  <main class="main-content" role="main">
 
     <!-- =================== DASHBOARD SECTION =================== -->
     <section class="section active" id="section-dashboard">
@@ -254,6 +254,13 @@
               <div class="suggestions-title">💡 Suggestions</div>
               <ul class="suggestions-list" id="suggestionsList"></ul>
             </div>
+            <button
+class="analyze-btn hidden"
+id="downloadReportBtn">
+
+Download Report
+
+</button>
           </div>
         </div>
       </div>
@@ -283,7 +290,7 @@
           <h1 class="section-title">Study Planner</h1>
           <p class="section-subtitle">Daily tasks to keep you on track for placements.</p>
         </div>
-        <button class="reset-btn" id="resetPlanner">Reset Today</button>
+        <button class="reset-btn" id="resetPlanner" aria-label="Reset study planner">Reset Today</button>
       </div>
 
       <div class="planner-layout">
@@ -297,7 +304,7 @@
             <option value="Mock">Mock Interview</option>
             <option value="Other">Other</option>
           </select>
-          <button class="add-task-btn" id="addTaskBtn">+ Add</button>
+          <button class="add-task-btn" id="addTaskBtn" aria-label="Add new study task">+ Add</button>
         </div>
 
         <!-- Progress bar -->
@@ -323,6 +330,7 @@
 
   </main>
 <div id="toast-container"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="script.js"></script>
   
 </body>

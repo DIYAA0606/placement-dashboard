@@ -52,6 +52,20 @@ menuBtn.addEventListener("click", () => {
 });
 
 overlay.addEventListener("click", closeSidebar);
+document.addEventListener(
+  "keydown",
+  e => {
+
+    if(
+      e.key === "Escape"
+    ){
+
+      closeSidebar();
+
+    }
+
+  }
+);
 
 function openSidebar() {
   sidebar.classList.add("mobile-open");
@@ -91,6 +105,7 @@ function closeSidebar() {
 function getEl(id) { return document.getElementById(id); }
 
 let selectedFile = null;
+let latestAnalysis = null;
 const RING_CIRCUMFERENCE = 351.86; // 2 * π * 56
 
 // ── Skill taxonomy for client-side matching ────────────────────────
@@ -278,6 +293,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     renderResults(data, usedClientFallback,jdText);
     saveAnalysisToHistory(
+        
 
     data,
 
@@ -286,6 +302,7 @@ document.addEventListener("DOMContentLoaded", function() {
     jdText
 
 );
+recordActivity();
 
 refreshDashboard();
   });
@@ -338,6 +355,7 @@ function setLoading(on) {
 
 /** Render analysis results */
 function renderResults(data, clientMode,jdText) {
+    latestAnalysis = data;
   const ringFillEl      = getEl("ringFill");
   const ringPctEl       = getEl("ringPct");
   const foundSkillsEl   = getEl("foundSkills");
@@ -403,6 +421,16 @@ function renderResults(data, clientMode,jdText) {
   }
 
   if (resultsContent) resultsContent.classList.remove("hidden");
+  const downloadBtn =
+getEl("downloadReportBtn");
+
+if(downloadBtn){
+
+    downloadBtn.classList.remove(
+        "hidden"
+    );
+
+}
 }
 
 /** Animate a number counter from start→end in duration ms */
@@ -616,6 +644,10 @@ function renderDSAGrid() {
 
     topic.problems.forEach(problem => {
       const item = document.createElement("div");
+      item.setAttribute(
+  "tabindex",
+  "0"
+);
       item.className = "dsa-problem-item" + (dsaState[problem.id] ? " checked" : "");
       item.dataset.problemId = problem.id;
 
@@ -640,6 +672,7 @@ function renderDSAGrid() {
         const id = item.dataset.problemId;
         dsaState[id] = !dsaState[id];
         saveDSAState(dsaState);
+        recordActivity();
         renderDSAGrid(); // Re-render to update all counts & badges
         refreshDashboard();
         
@@ -648,6 +681,20 @@ function renderDSAGrid() {
         const updatedCard = document.querySelector(`.dsa-topic-card[data-topic-id="${topic.id}"]`);
         if (updatedCard) updatedCard.classList.add("open");
       });
+      item.addEventListener(
+  "keydown",
+  e => {
+
+    if(
+      e.key === "Enter"
+    ){
+
+      item.click();
+
+    }
+
+  }
+);
 
       problemList.appendChild(item);
     });
@@ -763,6 +810,7 @@ function renderPlanner() {
     item.addEventListener("click", () => {
       task.done = !task.done;
       savePlannerTasks();
+      recordActivity();
       renderPlanner();
       refreshDashboard();
     });
@@ -909,12 +957,20 @@ function refreshDashboard(){
 
     // ---------- STREAK ----------
 
-    if(streakCard){
+    const activityLog =
+JSON.parse(
 
-        streakCard.textContent =
-        "7 days";
+    localStorage.getItem(
+        "placeprep_activity"
+    ) || "[]"
 
-    }
+);
+
+const streak =
+calculateStreak(activityLog);
+
+streakCard.textContent =
+`🔥 ${streak} days`;
 
 }
 /* ====================================================
@@ -978,6 +1034,95 @@ function saveAnalysisToHistory(
     );
 
 }
+/* ====================================================
+   ACTIVITY TRACKING
+==================================================== */
+
+function recordActivity(){
+
+    const today =
+    new Date()
+    .toISOString()
+    .split("T")[0];
+
+
+    const log =
+    JSON.parse(
+
+        localStorage.getItem(
+            "placeprep_activity"
+        ) || "[]"
+
+    );
+
+
+    if(!log.includes(today)){
+
+        log.push(today);
+
+    }
+
+
+    localStorage.setItem(
+
+        "placeprep_activity",
+
+        JSON.stringify(log)
+
+    );
+
+}
+function calculateStreak(log){
+
+    if(log.length === 0){
+
+        return 0;
+
+    }
+
+    const dates =
+    log.sort().reverse();
+
+    let streak = 0;
+
+    const today =
+    new Date();
+
+    for(let i = 0; i < dates.length; i++){
+
+        const checkDate =
+        new Date(dates[i]);
+
+        const diff =
+        Math.floor(
+
+            (
+                today - checkDate
+            )
+
+            /
+
+            (1000 * 60 * 60 * 24)
+
+        );
+
+        if(diff === streak){
+
+            streak++;
+
+        }
+
+        else{
+
+            break;
+
+        }
+
+    }
+
+    return streak;
+
+}
 showSection("dashboard");
 refreshDashboard();
 /* ====================================================
@@ -1024,5 +1169,95 @@ function toast(
         el.remove();
 
     }, 3000);
+
+}
+/* ====================================================
+   PDF EXPORT
+==================================================== */
+
+function exportReport(){
+
+    if(!latestAnalysis) return;
+
+    const { jsPDF } =
+    window.jspdf;
+
+    const doc =
+    new jsPDF();
+
+    doc.setFontSize(20);
+
+    doc.text(
+        "PlacePrep Resume Analysis",
+        20,
+        20
+    );
+
+    doc.setFontSize(12);
+
+    doc.text(
+        `Match Score: ${latestAnalysis.percentage}%`,
+        20,
+        40
+    );
+
+    doc.text(
+        "Matched Skills:",
+        20,
+        60
+    );
+
+    let y = 70;
+
+    latestAnalysis.found_skills
+    .forEach(skill => {
+
+        doc.text(
+            `• ${skill}`,
+            25,
+            y
+        );
+
+        y += 8;
+
+    });
+
+    y += 10;
+
+    doc.text(
+        "Missing Skills:",
+        20,
+        y
+    );
+
+    y += 10;
+
+    latestAnalysis.missing_skills
+    .forEach(skill => {
+
+        doc.text(
+            `• ${skill}`,
+            25,
+            y
+        );
+
+        y += 8;
+
+    });
+
+    doc.save(
+        "placeprep-report.pdf"
+    );
+
+}
+const downloadBtn =
+getEl("downloadReportBtn");
+
+if(downloadBtn){
+
+    downloadBtn.addEventListener(
+        "click",
+        exportReport
+    );
 
 }
