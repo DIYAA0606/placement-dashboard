@@ -8,7 +8,7 @@ import os
 import re
 import uuid
 import json
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory,render_template
 
 # PyPDF2 for PDF text extraction
 try:
@@ -16,7 +16,7 @@ try:
 except ImportError:
     PyPDF2 = None
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+app = Flask(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 UPLOAD_FOLDER = "uploads"
@@ -231,8 +231,7 @@ def build_suggestions(missing: list, found: list, pct: int) -> list:
 
 @app.route("/")
 def index():
-    """Serve the frontend index.html."""
-    return send_from_directory(".", "index.html")
+    return render_template("index.html")
 
 
 @app.route("/analyze", methods=["POST"])

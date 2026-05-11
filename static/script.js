@@ -693,7 +693,7 @@ function renderDSAGrid() {
 
     }
 
-  }
+  } 
 );
 
       problemList.appendChild(item);
@@ -972,6 +972,11 @@ calculateStreak(activityLog);
 streakCard.textContent =
 `🔥 ${streak} days`;
 
+// Re-compute readiness score whenever dashboard data changes
+// Guard: updateReadinessUI is defined later in the file — safe to call
+// because refreshDashboard is only invoked after full script parse.
+if (typeof updateReadinessUI === "function") updateReadinessUI();
+
 }
 /* ====================================================
    RESUME HISTORY
@@ -1125,6 +1130,323 @@ function calculateStreak(log){
 }
 showSection("dashboard");
 refreshDashboard();
+/* ====================================================
+   PHASE 1 — USER PROFILE SYSTEM
+   localStorage key: placeprep_profile
+   Stores: name, branch, year, role, companies, level, college
+   Exposes: getProfile(), saveProfile()
+   Drives: dashboard greeting, sidebar, readiness score
+==================================================== */
+
+/* ---- Profile helpers ---- */
+
+const PROFILE_KEY = "placeprep_profile";
+
+const DEFAULT_PROFILE = {
+  name:      "Aryan Kumar",
+  branch:    "Computer Science",
+  year:      "2026",
+  role:      "SWE",
+  companies: "Google, Amazon, Flipkart",
+  level:     "intermediate",
+  college:   "",
+};
+
+function getProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+  } catch (_) {}
+  return { ...DEFAULT_PROFILE };
+}
+
+function saveProfile(data) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(data));
+}
+
+/* Derive initials from full name (up to 2 chars) */
+function getInitials(name) {
+  if (!name || !name.trim()) return "??";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/* ---- Greeting text based on time of day ---- */
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/* ---- Apply profile to sidebar & dashboard ---- */
+function applyProfile() {
+  const p = getProfile();
+  const initials = getInitials(p.name);
+  const firstName = p.name.trim().split(/\s+/)[0] || "there";
+
+  // Sidebar
+  const sidebarAvatar = document.getElementById("sidebarAvatar");
+  const sidebarName   = document.getElementById("sidebarName");
+  const sidebarTag    = document.getElementById("sidebarTag");
+
+  if (sidebarAvatar) sidebarAvatar.textContent = initials;
+  if (sidebarName)   sidebarName.textContent   = p.name || "Student";
+  if (sidebarTag)    sidebarTag.textContent     =
+    `${p.year ? "Class of " + p.year : ""}${p.branch ? " · " + p.branch : ""}`.replace(/^· /, "");
+
+  // Dashboard greeting
+  const greetingEl  = document.getElementById("dashGreeting");
+  const subtitleEl  = document.getElementById("dashSubtitle");
+
+  if (greetingEl) {
+    greetingEl.textContent = `${getGreeting()}, ${firstName} 👋`;
+  }
+
+  if (subtitleEl) {
+    const roleMap = {
+      SWE: "Software Engineer", SDE: "SDE (Product)",
+      ML: "ML / AI Engineer", DS: "Data Scientist",
+      DevOps: "DevOps / Cloud", "Full Stack": "Full Stack Developer", Other: "Engineer"
+    };
+    const roleLabel = roleMap[p.role] || "Engineer";
+    subtitleEl.innerHTML = `Preparing for <strong>${roleLabel}</strong> roles.
+      Here's where you stand today.`;
+  }
+
+  // Target companies chips
+  const row = document.getElementById("targetCompaniesRow");
+  if (row) {
+    row.innerHTML = "";
+    if (p.companies && p.companies.trim()) {
+      const companies = p.companies.split(",").map(c => c.trim()).filter(Boolean);
+      if (companies.length > 0) {
+        const label = document.createElement("span");
+        label.style.cssText = "font-size:0.68rem;color:var(--text3);margin-right:4px;align-self:center;white-space:nowrap;";
+        label.textContent = "Targeting:";
+        row.appendChild(label);
+        companies.slice(0, 5).forEach(co => {
+          const chip = document.createElement("span");
+          chip.className = "company-chip";
+          chip.textContent = co;
+          row.appendChild(chip);
+        });
+        if (companies.length > 5) {
+          const more = document.createElement("span");
+          more.className = "company-chip";
+          more.style.opacity = "0.6";
+          more.textContent = `+${companies.length - 5} more`;
+          row.appendChild(more);
+        }
+      }
+    }
+  }
+}
+
+/* ====================================================
+   PLACEMENT READINESS SCORE
+   Combines: DSA %, latest resume score, planner %, streak
+   Weighted formula:
+     DSA:     35%
+     Resume:  30%
+     Planner: 20%
+     Streak:  15%
+==================================================== */
+function computeReadinessScore() {
+  // DSA component
+  const dsaData = loadDSAState();
+  let totalDSA = 0;
+  DSA_TOPICS.forEach(t => totalDSA += t.problems.length);
+  const solvedDSA = Object.values(dsaData).filter(v => v === true).length;
+  const dsaPct = totalDSA > 0 ? (solvedDSA / totalDSA) * 100 : 0;
+
+  // Resume component (latest score from history)
+  let resumePct = 0;
+  try {
+    const history = JSON.parse(localStorage.getItem("placeprep_resume_history") || "[]");
+    if (history.length > 0) resumePct = history[0].percentage || 0;
+  } catch (_) {}
+
+  // Planner component (tasks completed today)
+  const completedTasks = plannerTasks.filter(t => t.done).length;
+  const totalTasks = plannerTasks.length;
+  const plannerPctVal = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  // Streak component (cap at 14 days = 100%)
+  const activityLog = (() => {
+    try { return JSON.parse(localStorage.getItem("placeprep_activity") || "[]"); } catch (_) { return []; }
+  })();
+  const streak = calculateStreak(activityLog);
+  const streakPct = Math.min((streak / 14) * 100, 100);
+
+  // Weighted score
+  const score = Math.round(
+    dsaPct      * 0.35 +
+    resumePct   * 0.30 +
+    plannerPctVal * 0.20 +
+    streakPct   * 0.15
+  );
+
+  return Math.min(score, 100);
+}
+
+function updateReadinessUI() {
+  const score = computeReadinessScore();
+  const pct   = score + "%";
+
+  // Header badge
+  const badgeScore = document.getElementById("readinessScore");
+  if (badgeScore) badgeScore.textContent = pct;
+
+  // Progress card score + bar
+  const cardScore = document.getElementById("readinessCardScore");
+  const barFill   = document.getElementById("readinessBarFill");
+  if (cardScore) cardScore.textContent = pct;
+  if (barFill)   barFill.style.width   = pct;
+
+  return score;
+}
+
+/* ====================================================
+   PROFILE MODAL — Open / Save / Cancel
+==================================================== */
+(function initProfileModal() {
+  const backdrop     = document.getElementById("profileModalBackdrop");
+  const openBtn      = document.getElementById("openProfile");
+  const closeBtn     = document.getElementById("closeProfileModal");
+  const cancelBtn    = document.getElementById("cancelProfileModal");
+  const saveBtn      = document.getElementById("saveProfileModal");
+  const modalAvatar  = document.getElementById("modalAvatar");
+
+  // Form fields
+  const fields = {
+    name:      document.getElementById("profileName"),
+    branch:    document.getElementById("profileBranch"),
+    year:      document.getElementById("profileYear"),
+    role:      document.getElementById("profileRole"),
+    companies: document.getElementById("profileCompanies"),
+    level:     document.getElementById("profileLevel"),
+    college:   document.getElementById("profileCollege"),
+  };
+
+  function openModal() {
+    const p = getProfile();
+    // Populate form with current values
+    Object.keys(fields).forEach(key => {
+      if (fields[key] && p[key] !== undefined) {
+        fields[key].value = p[key];
+      }
+    });
+    // Update avatar preview as name changes
+    if (fields.name) {
+      fields.name.addEventListener("input", updateModalAvatar);
+    }
+    updateModalAvatar();
+    if (backdrop) backdrop.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    // Focus first field for accessibility
+    if (fields.name) fields.name.focus();
+  }
+
+  function updateModalAvatar() {
+    if (modalAvatar && fields.name) {
+      modalAvatar.textContent = getInitials(fields.name.value);
+    }
+  }
+
+  function closeModal() {
+    if (backdrop) backdrop.classList.add("hidden");
+    document.body.style.overflow = "";
+    // Remove live-update listener to avoid stacking
+    if (fields.name) fields.name.removeEventListener("input", updateModalAvatar);
+  }
+
+  function saveAndClose() {
+    const newProfile = {};
+    Object.keys(fields).forEach(key => {
+      if (fields[key]) newProfile[key] = fields[key].value.trim();
+    });
+
+    // Basic validation: name required
+    if (!newProfile.name) {
+      toast("Please enter your name to save the profile.", "error");
+      if (fields.name) fields.name.focus();
+      return;
+    }
+
+    saveProfile(newProfile);
+    applyProfile();
+    updateReadinessUI();
+    closeModal();
+    toast("Profile saved successfully!", "success");
+  }
+
+  if (openBtn)   openBtn.addEventListener("click",  openModal);
+  if (openBtn)   openBtn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(); } });
+  if (closeBtn)  closeBtn.addEventListener("click",  closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+  if (saveBtn)   saveBtn.addEventListener("click",   saveAndClose);
+
+  // Close on backdrop click (outside modal box)
+  if (backdrop) {
+    backdrop.addEventListener("click", e => {
+      if (e.target === backdrop) closeModal();
+    });
+  }
+
+  // Close on Escape
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && backdrop && !backdrop.classList.contains("hidden")) {
+      closeModal();
+    }
+  });
+})();
+
+/* ====================================================
+   DARK MODE SYSTEM
+   Stores theme in localStorage under "placeprep_theme"
+   Applies data-theme="light" to <html> for light mode.
+   Dark mode is the default (no attribute needed).
+==================================================== */
+(function initTheme() {
+  const THEME_KEY  = "placeprep_theme";
+  const toggleBtn  = document.getElementById("themeToggle");
+  const themeIcon  = document.getElementById("themeIcon");
+  const themeLabel = document.getElementById("themeLabel");
+
+  function applyTheme(theme) {
+    if (theme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      if (themeIcon)  themeIcon.textContent  = "☾";
+      if (themeLabel) themeLabel.textContent  = "Dark Mode";
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      if (themeIcon)  themeIcon.textContent  = "☀";
+      if (themeLabel) themeLabel.textContent  = "Light Mode";
+    }
+  }
+
+  function toggleTheme() {
+    const current  = localStorage.getItem(THEME_KEY) || "dark";
+    const next     = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+    toast(next === "light" ? "Switched to Light Mode" : "Switched to Dark Mode", "info");
+  }
+
+  // Boot: restore persisted theme
+  const saved = localStorage.getItem(THEME_KEY) || "dark";
+  applyTheme(saved);
+
+  if (toggleBtn) toggleBtn.addEventListener("click", toggleTheme);
+})();
+
+/* ====================================================
+   BOOT: apply profile + readiness after all systems init
+==================================================== */
+applyProfile();
+updateReadinessUI();
 /* ====================================================
    TOAST SYSTEM
 ==================================================== */

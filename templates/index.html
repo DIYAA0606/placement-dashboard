@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlacePrep — Placement Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">PlacePrep</span>
+    </div>
+
+    <nav class="sidebar-nav" role="navigation">
+      <a href="#" class="nav-item active" data-section="dashboard">
+        <span class="nav-icon">⬡</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-section="resume">
+        <span class="nav-icon">◎</span>
+        <span>Resume Analyzer</span>
+      </a>
+      <a href="#" class="nav-item" data-section="dsa">
+        <span class="nav-icon">◷</span>
+        <span>DSA Tracker</span>
+      </a>
+      <a href="#" class="nav-item" data-section="planner">
+        <span class="nav-icon">◫</span>
+        <span>Study Planner</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <!-- Dark mode toggle -->
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+        <span class="theme-icon" id="themeIcon">☀</span>
+        <span class="theme-label" id="themeLabel">Light Mode</span>
+      </button>
+
+      <!-- Clickable user card opens profile modal -->
+      <div class="user-card" id="openProfile" role="button" tabindex="0" title="Edit profile">
+        <div class="user-avatar" id="sidebarAvatar">AK</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarName">Aryan Kumar</div>
+          <div class="user-tag" id="sidebarTag">Final Year · CS</div>
+        </div>
+        <span class="user-edit-icon" aria-hidden="true">✎</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== PROFILE MODAL ===== -->
+  <div class="modal-backdrop hidden" id="profileModalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Your Profile</h2>
+        <button class="modal-close" id="closeProfileModal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-avatar-row">
+          <div class="modal-avatar" id="modalAvatar">AK</div>
+          <p class="modal-avatar-hint">Initials auto-generated from your name</p>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="profileName">Full Name</label>
+            <input type="text" id="profileName" class="form-input" placeholder="e.g. Aryan Kumar" maxlength="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileBranch">Branch / Major</label>
+            <input type="text" id="profileBranch" class="form-input" placeholder="e.g. Computer Science" maxlength="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileYear">Graduation Year</label>
+            <select id="profileYear" class="form-select">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileRole">Target Role</label>
+            <select id="profileRole" class="form-select">
+              <option value="SWE">Software Engineer</option>
+              <option value="SDE">SDE (Product)</option>
+              <option value="ML">ML / AI Engineer</option>
+              <option value="DS">Data Scientist</option>
+              <option value="DevOps">DevOps / Cloud</option>
+              <option value="Full Stack">Full Stack Developer</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" for="profileCompanies">Target Companies <span class="form-hint">(comma-separated)</span></label>
+            <input type="text" id="profileCompanies" class="form-input" placeholder="e.g. Google, Amazon, Flipkart, TCS" maxlength="200" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileLevel">Skill Level</label>
+            <select id="profileLevel" class="form-select">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate" selected>Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileCollege">College</label>
+            <input type="text" id="profileCollege" class="form-input" placeholder="e.g. NIT Trichy" maxlength="100" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-secondary" id="cancelProfileModal">Cancel</button>
+        <button class="modal-btn-primary" id="saveProfileModal">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MOBILE TOPBAR ===== -->
+  <header class="topbar" id="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle sidebar">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-logo">
+      <span class="logo-icon">◈</span> PlacePrep
+    </div>
+    <div class="topbar-right">
+      <div class="notif-dot"></div>
+    </div>
+  </header>
+
+  <!-- ===== SIDEBAR OVERLAY (mobile) ===== -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content" role="main">
+
+    <!-- =================== DASHBOARD SECTION =================== -->
+    <section class="section active" id="section-dashboard">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title" id="dashGreeting">Good morning, Aryan 👋</h1>
+          <p class="section-subtitle" id="dashSubtitle">Here's where you stand today. Stay consistent.</p>
+        </div>
+        <div class="header-right-group">
+          <div class="header-date" id="headerDate"></div>
+          <div class="readiness-badge" id="readinessBadge" title="Placement Readiness Score">
+            <span class="readiness-badge-label">Readiness</span>
+            <span class="readiness-badge-score" id="readinessScore">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="stats-grid">
+        <div class="stat-card" data-delay="0">
+          <div class="stat-label">Resume Match Score</div>
+          <div class="stat-value accent-green" id="statResumeScore" data-current="0">-</div>
+          <div class="stat-sub">Go to resume analyzer</div>
+          <div class="stat-bar"><div class="stat-bar-fill green" id="statResumeBar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card" data-delay="1">
+          <div class="stat-label">Weekly DSA Goal</div>
+          <div class="stat-value accent-blue" id="statDSA" data-current="0">14 / 20</div>
+          <div class="stat-sub">Solve the daily contests</div> 
+          <div class="stat-bar"><div class="stat-bar-fill blue" style="width:70%"></div></div>
+        </div>
+        <div class="stat-card" data-delay="2">
+          <div class="stat-label">Tasks Completed</div>
+          <div class="stat-value accent-purple" id="statTasks" data-current="0">9 / 12</div>
+          <div class="stat-sub">Today's study plan</div>
+          <div class="stat-bar"><div class="stat-bar-fill purple" style="width:75%"></div></div>
+        </div>
+        <div class="stat-card" data-delay="3">
+          <div class="stat-label">Study Streak</div>
+          <div class="stat-value accent-amber" id="statStreak" data-current="0">7 days</div>
+          <div class="stat-sub">You can do better</div>
+          <div class="stat-bar"><div class="stat-bar-fill amber" style="width:58%"></div></div>
+        </div>
+      </div>
+      <!-- Company Prep Mode -->
+<div class="company-prep-row">
+  <span class="company-prep-label">Prep Mode:</span>
+  <div class="company-prep-chips" id="companyPrepChips">
+    <button class="prep-chip active" data-company="general">General</button>
+    <button class="prep-chip" data-company="google">Google</button>
+    <button class="prep-chip" data-company="amazon">Amazon</button>
+    <button class="prep-chip" data-company="microsoft">Microsoft</button>
+    <button class="prep-chip" data-company="tcs">TCS / Service</button>
+  </div>
+</div>
+<div class="company-focus-banner" id="companyFocusBanner"></div>
+      <!-- Quick Actions -->
+      <div class="quick-actions-header">Quick Actions</div>
+      <div class="quick-actions">
+        <button class="qa-btn" data-section="resume">
+          <span class="qa-icon">◎</span>
+          <span class="qa-label">Analyze Resume</span>
+          <span class="qa-arrow">→</span>
+        </button>
+        <button class="qa-btn" data-section="dsa">
+          <span class="qa-icon">◷</span>
+          <span class="qa-label">Log DSA Problems</span>
+          <span class="qa-arrow">→</span>
+        </button>
+        <button class="qa-btn" data-section="planner">
+          <span class="qa-icon">◫</span>
+          <span class="qa-label">Open Planner</span>
+          <span class="qa-arrow">→</span>
+        </button>
+      </div>
+      <div class="export-row">
+  <button class="export-report-btn" id="exportProgressBtn">
+    <span>↓</span> Download Progress Report
+  </button>
+</div>
+      <!-- Recommendation Engine -->
+<div class="rec-box" id="recommendationBox"></div>
+
+      <!-- Progress Overview -->
+      <div class="progress-card">
+  <div class="progress-card-header">
+    <span>Placement Readiness</span>
+    <span class="progress-card-score" id="readinessCardScore">—</span>
+  </div>
+
+  <!-- Tier label -->
+  <div class="readiness-tier" id="readinessTier"></div>
+
+  <div class="readiness-bar-track">
+    <div class="readiness-bar-fill" id="readinessBarFill" style="width:0%"></div>
+  </div>
+  <div class="readiness-labels">
+    <span>Exploring</span><span>Building</span><span>Ready</span><span>Strong</span>
+  </div>
+
+  <!-- Score breakdown -->
+  <div class="readiness-breakdown" id="readinessBreakdown">
+    <div class="breakdown-row">
+      <span class="breakdown-label">Resume ATS</span>
+      <div class="breakdown-track">
+        <div class="breakdown-fill green" id="breakdownResume" style="width:0%"></div>
+      </div>
+      <span class="breakdown-val" id="breakdownResumeVal">—</span>
+      <span class="breakdown-weight">40%</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="breakdown-label">DSA Progress</span>
+      <div class="breakdown-track">
+        <div class="breakdown-fill blue" id="breakdownDSA" style="width:0%"></div>
+      </div>
+      <span class="breakdown-val" id="breakdownDSAVal">—</span>
+      <span class="breakdown-weight">35%</span>
+    </div>
+    <div class="breakdown-row">
+      <span class="breakdown-label">Tasks Done</span>
+      <div class="breakdown-track">
+        <div class="breakdown-fill purple" id="breakdownTasks" style="width:0%"></div>
+      </div>
+      <span class="breakdown-val" id="breakdownTasksVal">—</span>
+      <span class="breakdown-weight">25%</span>
+    </div>
+  </div>
+
+  <!-- Limiters -->
+  <div class="readiness-limiters" id="readinessLimiters"></div>
+
+  <!-- Company-specific note -->
+  <div class="readiness-company-note" id="readinessCompanyNote"></div>
+
+  <!-- Target companies -->
+  <div class="target-companies" id="targetCompaniesRow"></div>
+</div>
+
+        <div class="activity-card">
+          <div class="activity-title">Recent Activity</div>
+          <ul class="activity-list" id="activityList"></ul>
+        </div>
+      </div>
+      <div class="weekly-goal-block" id="weeklyGoalBlock"></div>
+    </section>
+
+    <!-- =================== RESUME ANALYZER SECTION =================== -->
+    <section class="section" id="section-resume">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Resume Analyzer</h1>
+          <p class="section-subtitle">Upload your resume and paste a JD to see how well you match.</p>
+        </div>
+      </div>
+
+      <div class="analyzer-grid">
+        <!-- Upload Panel -->
+        <div class="analyzer-panel">
+          <div class="panel-label">01 — Upload Resume</div>
+
+          <!-- Drop Zone -->
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">⬆</div>
+            <div class="drop-title">Drop your PDF here</div>
+            <div class="drop-sub">or click to browse</div>
+            <input type="file" id="resumeFile" accept=".pdf" hidden />
+          </div>
+          <div class="file-status" id="fileStatus"></div>
+
+          <div class="panel-label mt-24">02 — Paste Job Description</div>
+          <textarea
+            id="jobDescription"
+            class="jd-textarea"
+            placeholder="Paste the full job description here. Include required skills, responsibilities, and qualifications..."
+            rows="10"
+          ></textarea>
+
+          <button class="analyze-btn" id="analyzeBtn">
+            <span id="analyzeBtnText">Analyze Match</span>
+            <span class="btn-arrow">→</span>
+          </button>
+
+          <div class="analyzer-error hidden" id="analyzerError"></div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="analyzer-panel results-panel" id="resultsPanel">
+          <!-- Empty state -->
+          <div class="empty-state" id="resultsEmpty">
+            <div class="empty-icon">◎</div>
+            <div class="empty-title">No analysis yet</div>
+            <div class="empty-sub">Upload a resume and paste a job description, then click Analyze.</div>
+          </div>
+
+          <!-- Loading state -->
+          <div class="loading-state hidden" id="resultsLoading">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing your resume…</div>
+          </div>
+
+          <!-- Result state -->
+          <div class="result-state hidden" id="resultsContent">
+            <!-- SVG Ring -->
+            <div class="ring-wrapper">
+              <svg class="ring-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+                <circle class="ring-bg" cx="70" cy="70" r="56"/>
+                <circle class="ring-fill" id="ringFill" cx="70" cy="70" r="56"
+                  stroke-dasharray="351.86"
+                  stroke-dashoffset="351.86"
+                  transform="rotate(-90 70 70)"
+                />
+              </svg>
+              <div class="ring-label">
+                <div class="ring-pct" id="ringPct">0%</div>
+                <div class="ring-sub">Match Score</div>
+              </div>
+            </div>
+
+            <!-- Skill chips -->
+            <div class="skills-block">
+              <div class="skills-title found-title">✓ Matched Skills</div>
+              <div class="skill-chips" id="foundSkills"></div>
+            </div>
+            <div class="skills-block">
+              <div class="skills-title missing-title">✗ Missing Skills</div>
+              <div class="skill-chips" id="missingSkills"></div>
+            </div>
+
+            <!-- Suggestions -->
+            <div class="suggestions-block">
+              <div class="suggestions-title">💡 Suggestions</div>
+              <ul class="suggestions-list" id="suggestionsList"></ul>
+            </div>
+            <button
+class="analyze-btn hidden"
+id="exportReportBtn">
+
+Download Report
+
+</button>
+          </div>
+          <div
+  class="analysis-history"
+  id="analysisHistory"
+></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== DSA TRACKER SECTION =================== -->
+    <section class="section" id="section-dsa">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">DSA Tracker</h1>
+          <p class="section-subtitle">Track your problem-solving progress topic by topic.</p>
+        </div>
+        <div class="dsa-overall" id="dsaOverall">
+          <span id="dsaOverallPct">0%</span> complete
+        </div>
+        <!-- ADD after dsaOverall div: -->
+<div class="dsa-filters" id="dsaFilters">
+  <button class="dsa-filter-btn active" data-filter="all">All</button>
+  <button class="dsa-filter-btn" data-filter="Easy">Easy</button>
+  <button class="dsa-filter-btn" data-filter="Medium">Medium</button>
+  <button class="dsa-filter-btn" data-filter="Hard">Hard</button>
+</div>
+      </div>
+
+      <div
+  id="dsaGrid"
+  class="dsa-grid"
+>
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- =================== STUDY PLANNER SECTION =================== -->
+    <section class="section" id="section-planner">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Study Planner</h1>
+          <p class="section-subtitle">Daily tasks to keep you on track for placements.</p>
+        </div>
+        <button class="reset-btn" id="resetPlanner" aria-label="Reset study planner">Reset Today</button>
+      </div>
+
+      <div class="planner-layout">
+        <!-- Add Task -->
+        <div class="add-task-row">
+          <input type="text" id="plannerInput" class="task-input" placeholder="Add a new study task…" maxlength="120"/>
+          <select id="plannerCategory" class="task-cat-select">
+            <option value="DSA">DSA</option>
+            <option value="CS Core">CS Core</option>
+            <option value="Resume">Resume</option>
+            <option value="Mock">Mock Interview</option>
+            <option value="Other">Other</option>
+          </select>
+          <select id="plannerBucket" class="task-cat-select">
+  <option value="today">Today</option>
+  <option value="week">This Week</option>
+  <option value="someday">Someday</option>
+</select>
+          <button class="add-task-btn" id="plannerAddBtn" aria-label="Add new study task">+ Add</button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="planner-progress-row">
+          <div class="planner-pct" id="plannerPct">0 / 0 tasks done</div>
+          <div class="planner-track">
+            <div class="planner-fill" id="plannerFill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Task list -->
+        <div class="task-list" id="plannerTaskList">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="planner-empty hidden" id="plannerEmpty">
+          <div class="empty-icon">◫</div>
+          <div class="empty-title">No tasks yet</div>
+          <div class="empty-sub">Add your first study task above to get started.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+<div id="toast-container"></div>
+<!-- ===== ONBOARDING OVERLAY ===== -->
+<div class="onboarding-backdrop hidden" id="onboardingBackdrop">
+  <div class="onboarding-modal" id="onboardingModal">
+
+    <div class="onboarding-steps">
+
+      <!-- Step 1 -->
+      <div class="onboarding-step active" id="ob-step-1">
+        <div class="ob-icon">◈</div>
+        <h2 class="ob-title">Welcome to PlacePrep</h2>
+        <p class="ob-sub">Your personal placement coach. Let's set you up in 3 quick steps.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="obName">Your Name</label>
+            <input type="text" id="obName" class="form-input" placeholder="e.g. Aryan Kumar" maxlength="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="obBranch">Branch / Major</label>
+            <input type="text" id="obBranch" class="form-input" placeholder="e.g. Computer Science" maxlength="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="obYear">Graduation Year</label>
+            <select id="obYear" class="form-select">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="obRole">Target Role</label>
+            <select id="obRole" class="form-select">
+              <option value="SWE">Software Engineer</option>
+              <option value="SDE">SDE (Product)</option>
+              <option value="ML">ML / AI Engineer</option>
+              <option value="DS">Data Scientist</option>
+              <option value="DevOps">DevOps / Cloud</option>
+              <option value="Full Stack">Full Stack Developer</option>
+            </select>
+          </div>
+        </div>
+        <button class="ob-btn-primary" id="obStep1Next">Continue →</button>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="onboarding-step" id="ob-step-2">
+        <div class="ob-icon">◷</div>
+        <h2 class="ob-title">Pick Your Prep Mode</h2>
+        <p class="ob-sub">We'll highlight recommended DSA topics and give company-specific guidance.</p>
+        <div class="ob-company-grid" id="obCompanyGrid">
+          <button class="ob-company-btn active" data-company="general">General</button>
+          <button class="ob-company-btn" data-company="google">Google</button>
+          <button class="ob-company-btn" data-company="amazon">Amazon</button>
+          <button class="ob-company-btn" data-company="microsoft">Microsoft</button>
+          <button class="ob-company-btn" data-company="tcs">TCS / Service</button>
+        </div>
+        <button class="ob-btn-primary" id="obStep2Next">Continue →</button>
+        <button class="ob-btn-secondary" id="obStep2Back">← Back</button>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="onboarding-step" id="ob-step-3">
+        <div class="ob-icon">◫</div>
+        <h2 class="ob-title">Add Your First Task</h2>
+        <p class="ob-sub">Start your study plan. You can add more anytime.</p>
+        <div class="ob-task-row">
+          <input type="text" id="obTaskInput" class="form-input" placeholder="e.g. Solve 5 Array problems" maxlength="120" />
+          <select id="obTaskCategory" class="form-select">
+            <option value="DSA">DSA</option>
+            <option value="CS Core">CS Core</option>
+            <option value="Resume">Resume</option>
+            <option value="Mock">Mock Interview</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <button class="ob-btn-primary" id="obFinish">Let's Go →</button>
+        <button class="ob-btn-secondary" id="obStep3Back">← Back</button>
+      </div>
+
+    </div>
+
+    <!-- Step indicator -->
+    <div class="ob-dots">
+      <span class="ob-dot active" data-step="1"></span>
+      <span class="ob-dot" data-step="2"></span>
+      <span class="ob-dot" data-step="3"></span>
+    </div>
+
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+ <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+<script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+<script src="{{ url_for('static', filename='js/streak.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dsa.js') }}"></script>
+<script src="{{ url_for('static', filename='js/planner.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analyzer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/companyPrep.js') }}"></script>
+<script src="{{ url_for('static', filename='js/weeklyGoal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
+<script src="{{ url_for('static', filename='js/export.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>
