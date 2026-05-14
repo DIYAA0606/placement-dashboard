@@ -19,7 +19,7 @@ except ImportError:
 app = Flask(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = "/tmp"
 ALLOWED_EXTENSIONS = {"pdf"}
 MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
 
